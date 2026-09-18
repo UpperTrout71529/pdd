@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ПДД 2026: Визуальный тренажер ГИБДД</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .svg-canvas {
+            width: 100%;
+            height: 100%;
+            max-height: 320px;
+            background-color: #0f172a;
+            border-radius: 0.75rem;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen flex flex-col font-sans antialiased">
+
+    <!-- Header -->
+    <header class="bg-slate-800 border-b border-slate-700 py-4 px-6 sticky top-0 z-50">
+        <div class="max-w-4xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">🚗</span>
+                <h1 class="text-xl font-bold text-emerald-400">ПДД 2026: Визуальный тренажер</h1>
+            </div>
+            <div id="score-badge" class="bg-slate-700 text-emerald-300 font-semibold px-4 py-1.5 rounded-full text-sm border border-slate-600">
+                Счет: <span id="current-score">0</span> / <span id="total-questions-badge">10</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-4xl w-full mx-auto p-4 md:p-6 flex flex-col justify-center">
+
+        <!-- Progress Bar -->
+        <div class="mb-6">
+            <div class="flex justify-between text-xs font-semibold text-slate-400 mb-2">
+                <span id="question-tracker">Вопрос 1 из 10</span>
+                <span id="progress-percent">0%</span>
+            </div>
+            <div class="w-full bg-slate-800 rounded-full h-2.5 overflow-hidden">
+                <div id="progress-bar" class="bg-emerald-500 h-2.5 rounded-full transition-all duration-300" style="width: 10%;"></div>
+            </div>
+        </div>
+
+        <!-- Quiz Card -->
+        <div id="quiz-card" class="bg-slate-800 border border-slate-700 rounded-2xl p-5 md:p-7 shadow-2xl flex flex-col gap-6">
+
+            <!-- SVG Graphic Box -->
+            <div class="w-full flex justify-center items-center overflow-hidden shadow-inner border border-slate-700/50 rounded-xl bg-slate-950 p-2">
+                <div id="svg-container" class="w-full flex justify-center">
+                    <!-- SVG diagram will be injected here -->
+                </div>
+            </div>
+
+            <!-- Question Text -->
+            <div>
+                <div class="inline-block bg-emerald-500/10 text-emerald-400 text-xs font-bold px-3 py-1 rounded-md mb-2 border border-emerald-500/20" id="topic-tag">
+                    Приоритет сигналов
+                </div>
+                <h2 id="question-text" class="text-lg md:text-xl font-semibold text-slate-100 leading-snug">
+                    Загрузка вопроса...
+                </h2>
+            </div>
+
+            <!-- Options Container -->
+            <div id="options-container" class="grid grid-cols-1 gap-3">
+                <!-- Buttons injected dynamically -->
+            </div>
+
+            <!-- Rationale Box (Hidden by default) -->
+            <div id="explanation-box" class="hidden p-4 rounded-xl border transition-all">
+                <div class="font-bold text-sm mb-1 flex items-center gap-2" id="explanation-title">
+                    <!-- Correct / Incorrect Header -->
+                </div>
+                <p id="explanation-text" class="text-sm text-slate-300 leading-relaxed">
+                    <!-- Rationale text -->
+                </p>
+            </div>
+
+            <!-- Action Footer -->
+            <div class="flex justify-end pt-2 border-t border-slate-700/50">
+                <button id="next-btn" onclick="nextQuestion()" class="hidden bg-emerald-500 hover:bg-emerald-600 active:bg-emerald-700 text-slate-950 font-bold px-6 py-2.5 rounded-xl transition shadow-lg shadow-emerald-500/20">
+                    Следующий вопрос →
+                </button>
+            </div>
+        </div>
+
+        <!-- End Screen (Hidden by default) -->
+        <div id="end-card" class="hidden bg-slate-800 border border-slate-700 rounded-2xl p-8 text-center flex flex-col items-center gap-6 shadow-2xl">
+            <div class="text-6xl">🏆</div>
+            <h2 class="text-2xl font-bold text-white">Тестирование завершено!</h2>
+            <p class="text-slate-300 max-w-md">
+                Вы ответили правильно на <span id="final-score" class="text-emerald-400 font-bold text-xl">0</span> из 10 вопросов.
+            </p>
+            <div id="feedback-message" class="text-sm text-slate-400 max-w-md bg-slate-900 p-4 rounded-xl border border-slate-700">
+                <!-- Dynamic feedback -->
+            </div>
+            <button onclick="restartQuiz()" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-bold px-8 py-3 rounded-xl transition shadow-lg shadow-emerald-500/20">
+                Пройти заново 🔄
+            </button>
+        </div>
+
+    </main>
+
+    <script>
+        const questions = [
+            {
+                id: 1,
+                topic: "Приоритет сигналов",
+                question: "Перекресток. Горит зеленый сигнал светофора, под ним висит знак «Уступи дорогу». Вы едете прямо, встречный красный автомобиль поворачивает налево. Кто проедет первым?",
+                svg: `
+                <svg viewBox="0 0 400 280" class="svg-canvas">
+                    <!-- Grass -->
+                    <rect width="400" height="280" fill="#0f172a"/>
+                    <!-- Roads -->
+                    <rect x="0" y="90" width="400" height="100" fill="#334155"/>
+                    <rect x="150" y="0" width="100" height="280" fill="#334155"/>
+                    <!-- Road Markings -->
+                    <line x1="200" y1="0" x2="200" y2="90" stroke="#f8fafc" stroke-width="2" stroke-dasharray="8 8"/>
+                    <line x1="200" y1="190" x2="200" y2="280" stroke="#f8fafc" stroke-width="2" stroke-dasharray="8 8"/>
+                    <line x1="0" y1="140" x2="150" y2="140" stroke="#f8fafc" stroke-width="2" stroke-dasharray="8 8"/>
+                    <line x1="250" y1="140" x2="400" y2="140" stroke="#f8fafc" stroke-width="2" stroke-dasharray="8 8"/>
+                    
+                    <!-- Blue Car (Player) -->
+                    <g transform="translate(165, 210)">
+                        <rect x="0" y="0" width="30" height="50" rx="6" fill="#2563eb" stroke="#93c5fd" stroke-width="2"/>
+                        <text x="15" y="30" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">ВЫ</text>
+                        <!-- Arrow straight -->
+                        <path d="M15 -5 L15 -25 M10 -18 L15 -27 L20 -18" stroke="#38bdf8" stroke-width="3" fill="none"/>
+                    </g>
+
+                    <!-- Red Car (Oncoming) -->
+                    <g transform="translate(205, 20)">
+                        <rect x="0" y="0" width="30" height="50" rx="6" fill="#dc2626" stroke="#fca5a5" stroke-width="2"/>
+                        <text x="15" y="30" fill="#ffffff" font-size="9" font-weight="bold" text-anchor="middle">ВСТР</text>
+                        <!-- Arrow Left turn -->
+                        <path d="M15 55 Q15 95 -20 95" stroke="#ef4444" stroke-dasharray="4 4" stroke-width="3" fill="none"/>
+                        <path d="M-15 90 L-25 95 L-15 100" fill="#ef4444"/>
+                    </g>
+
+                    <!-- Traffic Light -->
+                    <g transform="translate(125, 195)">
+                        <rect x="0" y="0" width="18" height="40" rx="3" fill="#1e293b" stroke="#64748b"/>
+                        <circle cx="9" cy="8" r="4" fill="#334155"/>
+                        <circle cx="9" cy="20" r="4" fill="#334155"/>
+                        <circle cx="9" cy="32" r="5" fill="#22c55e"/> <!-- Green -->
+                    </g>
+
+                    <!-- Yield Sign -->
+                    <g transform="translate(125, 240)">
+                        <polygon points="9,0 0,18 18,18" fill="#ffffff" stroke="#dc2626" stroke-width="3"/>
+                    </g>
+                </svg>`,
+                options: [
+                    { text: "Вы (синий автомобиль)", isCorrect: true, rationale: "Работающий зеленый сигнал светофора отменяет действие знаков приоритета. При повороте налево встречный автомобиль обязан уступить вам дорогу." },
+                    { text: "Встречный красный автомобиль", isCorrect: false, rationale: "Знак «Уступи дорогу» не действует, так как светофор работает в штатном режиме." }
+                ]
+            },
+            {
+                id: 2,
+                topic: "Сигналы регулировщика",
+                question: "На перекрестке стоит регулировщик. Он обращен к вам боком, руки опущены. В каких направлениях вам разрешено движение?",
+                svg: `
+                <svg viewBox="0 0 400 280" class="svg-canvas">
+                    <rect width="400" height="280" fill="#0f172a"/>
+                    <rect x="0" y="90" width="400" height="100" fill="#334155"/>
+                    <rect x="150" y="0" width="100" height="280" fill="#334155"/>
+                    
+                    <!-- Controller in center -->
+                    <g transform="translate(200, 140)">
+                        <circle cx="0" cy="0" r="14" fill="#f59e0b"/>
+                        <!-- Hands out to sides -->
+                        <line x1="-28" y1="0" x2="28" y2="0" stroke="#f8fafc" stroke-width="4"/>
+                        <text x="0" y="4" fill="#000" font-size="10" font-weight="bold" text-anchor="middle">РЕГ</text>
+                    </g>
+
+                    <!-- Blue Car -->
+                    <g transform="translate(165, 210)">
+                        <rect x="0" y="0" width="30" height="50" rx="6" fill="#2563eb" stroke="#93c5fd" stroke-width="2"/>
+                        <text x="15" y="30" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">ВЫ</text>
+                    </g>
+                </svg>`,
+                options: [
+                    { text: "Только прямо", isCorrect: false, rationale: "При положении регулировщика боком движение разрешено не только прямо." },
+                    { text: "Прямо и направо", isCorrect: true, rationale: "Если регулировщик обращен боком с опущенными (или вытянутыми в стороны) руками — со стороны боков движение разрешено прямо и направо." },
+                    { text: "Во всех направлениях", isCorrect: false, rationale: "Поворот налево и разворот при таком сигнале запрещены." },
+                    { text: "Движение запрещено", isCorrect: false, rationale: "Движение запрещено только со стороны груди и спины." }
+                ]
+            },
+            {
+                id: 3,
+                topic: "Круговое движение",
+                question: "Вы въезжаете на перекресток с круговым движением (знак 4.3). Знаков приоритета нет. Кто имеет преимущество?",
+                svg: `
+                <svg viewBox="0 0 400 280" class="svg-canvas">
+                    <rect width="400" height="280" fill="#0f172a"/>
+                    <!-- Roundabout road -->
+                    <circle cx="200" cy="140" r="90" fill="#334155"/>
+                    <circle cx="200" cy="140" r="45" fill="#0f172a"/>
+                    <rect x="170" y="210" width="60" height="70" fill="#334155"/>
+                    
+                    <!-- Blue Car entering -->
+                    <g transform="translate(185, 230)">
+                        <rect x="0" y="0" width="30" height="45" rx="5" fill="#2563eb"/>
+                        <text x="15" y="26" fill="#fff" font-size="10" font-weight="bold" text-anchor="middle">ВЫ</text>
+                    </g>
+
+                    <!-- Red Car on circle -->
+                    <g transform="translate(110, 120)">
+                        <rect x="0" y="0" width="45" height="30" rx="5" fill="#dc2626"/>
+                        <text x="22" y="19" fill="#fff" font-size="9" font-weight="bold" text-anchor="middle">КРУГ</text>
+                    </g>
+
+                    <!-- Sign 4.3 -->
+                    <g transform="translate(240, 230)">
+                        <circle cx="12" cy="12" r="14" fill="#2563eb" stroke="#fff" stroke-width="2"/>
+                        <!-- White arrows inside -->
+                        <path d="M 8 16 A 6 6 0 1 1 16 16" stroke="#fff" stroke-width="2" fill="none"/>
+                    </g>
+                </svg>`,
+                options: [
+                    { text: "Вы (въезжающий на кольцо)", isCorrect: false, rationale: "По правилам ПДД въезжающий на круговое движение обязан уступить находящимся на нем." },
+                    { text: "Автомобиль, движущийся по кольцу", isCorrect: true, rationale: "При въезде на перекресток с круговым движением (знак 4.3) водитель обязан уступить дорогу всем ТС, движущимся по кругу." }
+                ]
+            },
+            {
+                id: 4,
+                topic: "Равнозначный перекресток",
+                question: "Равнозначный перекресток без знаков и светофоров. Вы едете прямо. Справа приближается красный автомобиль. Ваши действия?",
+                svg: `
+                <svg viewBox="0 0 400 280" class="svg-canvas">
+                    <rect width="400" height="280" fill="#0f172a"/>
+                    <rect x="0" y="90" width="400" height="100" fill="#334155"/>
+                    <rect x="150" y="0" width="100" height="280" fill="#334155"/>
+                    
+                    <!-- Blue Car -->
+                    <g transform="translate(165, 200)">
+                        <rect x="0" y="0" width="30" height="50" rx="6" fill="#2563eb"/>
+                        <text x="15" y="30" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">ВЫ</text>
+                    </g>
+
+                    <!-- Red Car (From Right) -->
+                    <g transform="translate(270, 105)">
+                        <rect x="0" y="0" width="50" height="30" rx="6" fill="#dc2626"/>
+                        <text x="25" y="19" fill="#ffffff" font-size="10" font-weight="bold" text-anchor="middle">СПРАВА</text>
+                    </g>
+                </svg>`,
+                options: [
+                    { text: "Проехать первым", isCorrect: false, rationale: "Вы не имеете преимущества, так как у вас помеха справа." },
+                    { text: "Уступить дорогу красному автомобилю", isCorrect: true, rationale: "На равнозначных дорогах действует правило «помехи справа»: водитель уступает ТС, приближающимся справа." }
+                ]
+            },
+            {
+                id: 5,
+                topic: "Остановка и стоянка",
+                question: "Какое минимальное расстояние нужно отступить ДО нерегулируемого пешеходного перехода при остановке?",
+                svg: `
+                <svg viewBox="0 0 400 280" class="svg-canvas">
+                    <rect width="400" height="280" fill="#0f172a"/>
+                    <rect x="50" y="0" width="300" height="280" fill="#334155"/>
+                    
+                    <!-- Zebra Crossing -->
+                    <g transform="translate(50, 80)">
+                        <rect x="0" y="0" width="300" height="30" fill="#334155"/>
+                        <rect x="10" y="5" width="35" height="20" fill="#fff"/>
+                        <rect x="60" y="5" width="35" height="20" fill="#fff"/>
+                        <rect x="110" y="5" width="35" height="20" fill="#fff"/>
+                        <rect x="160" y="5" width="35" height="20" fill="#fff"/>
+                        <rect x="210" y="5" width="35" height="20" fill="#fff"/>
+                        <rect x="260" y="5" width="35" height="20" fill="#fff"/>
+                    </g>
+
+                    <!-- Blue Car Parked -->
+                    <g transform="translate(220, 180)">
+                        <rect x="0" y="0" width="40" height="65" rx="6" fill="#2563eb"/>
+                        <text x="20" y="38" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">ВЫ</text>
+                    </g>
+
+                    <!-- Distance Marker -->
+                    <line x1="200" y1="110" x2="200" y2="180" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4 4"/>
+                    <text x="180" y="150" fill="#f59e0b" font-size="14" font-weight="bold">? метров</text>
+                </svg>`,
+                options: [
+                    { text: "3 метра", isCorrect: false, rationale: "3 метра отмеряются до сплошной линии разметки, а не до перехода." },
+                    { text: "5 метров", isCorrect: true, rationale: "Остановка запрещена ближе 5 метров перед пешеходным переходом (сразу за переходом останавливаться разрешено)." },
+                    { text: "15 метров", isCorrect: false, rationale: "15 метров отмеряется до остановок маршрутных ТС." }
+                ]
+            },
+            {
+                id: 6,
+                topic: "Маневрирование",
+                question: "Вы поворачиваете налево на зеленый сигнал светофора. Встречный автомобиль едет прямо. Кому вы обязаны уступить?",
+                svg: `
+                <svg viewBox="0 0 400 280" class="svg-canvas">
+                    <rect width="400" height="280" fill="#0f172a"/>
+                    <rect x="0" y="90" width="400" height="100" fill="#334155"/>
+                    <rect x="150" y="0" width="100" height="280" fill="#334155"/>
+                    
+                    <!-- Blue Car Turning Left -->
+                    <g transform="translate(165, 200)">
+                        <rect x="0" y="0" width="30" height="50" rx="6" fill="#2563eb"/>
+                        <text x="15" y="30" fill="#ffffff" font-size="11" font-weight="bold" text-anchor="middle">ВЫ</text>
+                    </g>
+
+                    <!-- Red Car Straight -->
+                    <g transform="translate(205, 30)">
+                        <rect x="0" y="0" width="30" height="50" rx="6" fill="#dc2626"/>
+                        <text x="15" y="30" fill="#ffffff" font-size="9" font-weight="bold" text-anchor="middle">ВСТР</text>
+                    </g>
+                </svg>`,
+                options: [
+                    { text: "Никому, так как у вас зеленый свет", isCorrect: false, rationale: "Зеленый свет горит и у вас, и у встречного автомобиля." },
+                    { text: "Только встречному автомобилю", isCorrect: true, rationale: "При поворотe налево или развороте по зеленому сигналу светофора водитель обязан уступить дорогу ТС, движущимся со встречного направления прямо или направо." }
+                ]
+            },
+            {
+                id: 7,
+                topic: "Аварийная остановка",
+                question: "На каком минимальном расстоянии от автомобиля устанавливается знак аварийной остановки в населенном пункте?",
+                svg: `
+                <svg viewBox="0 0 400 280" class="svg-canvas">
+                    <rect width="400" height="280" fill="#0f172a"/>
+                    <rect x="0" y="80" width="400" height="120" fill="#334155"/>
+                    
+                    <!-- Car with Hazards -->
+                    <g transform="translate(250, 115)">
+                        <rect x="0" y="0" width="70" height="45" rx="6" fill="#2563eb"/>
+                        <text x="35" y="27" fill="#ffffff" font-size="10" font-weight="bold" text-anchor="middle">ДТП</text>
+                    </g>
+
+                    <!-- Triangle Sign -->
+                    <g transform="translate(80, 125)">
+                        <polygon points="12,0 0,24 24,24" fill="#dc2626" stroke="#fff" stroke-width="2"/>
+                    </g>
+
+                    <!-- Distance -->
+                    <line x1="95" y1="170" x2="250" y2="170" stroke="#f59e0b" stroke-width="2"/>
+                    <text x="160" y="190" fill="#f59e0b" font-size="13" font-weight="bold">? метров</text>
+                </svg>`,
+                options: [
+                    { text: "Не менее 10 метров", isCorrect: false, rationale: "10 метров недостаточно по правилам безопасности." },
+                    { text: "Не менее 15 метров", isCorrect: true, rationale: "В населенных пунктах знак выставляется на расстоянии не менее 15 м (вне населенных пунктов — не менее 30 м)." },
+                    { text: "Не менее 30 метров", isCorrect: false, rationale: "30 метров требование действует вне населенных пунктов." }
+                ]
+            },
+            {
+                id: 8,
+                topic: "Обгон и разметка",
+                question: "Разрешен ли обгон тихоходного грузовика через сплошную линию разметки 1.1?",
+                svg: `
+                <svg viewBox="0 0 400 280" class="svg-canvas">
+                    <rect width="400" height="280" fill="#0f172a"/>
+                    <rect x="0" y="60" width="400" height="160" fill="#334155"/>
+                    
+                    <!-- Solid Line -->
+                    <line x1="0" y1="140" x2="400" y2="140" stroke="#ffffff" stroke-width="4"/>
+
+                    <!-- Truck -->
+                    <g transform="translate(180, 155)">
+                        <rect x="0" y="0" width="80" height="40" rx="4" fill="#64748b"/>
+                        <text x="40" y="24" fill="#ffffff" font-size="10" font-weight="bold" text-anchor="middle">ГРУЗОВИК</text>
+                    </g>
+
+                    <!-- Blue Car overtaking -->
+                    <g transform="translate(80, 155)">
+                        <rect x="0" y="0" width="45" height="35" rx="5" fill="#2563eb"/>
+                        <text x="22" y="22" fill="#ffffff" font-size="10" font-weight="bold" text-anchor="middle">ВЫ</text>
+                    </g>
+                </svg>`,
+                options: [
+                    { text: "Разрешен, если его скорость менее 30 км/ч", isCorrect: false, rationale: "Даже тихоходные ТС нельзя обгонять с пересечением сплошной линии 1.1." },
+                    { text: "Запрещен", isCorrect: true, rationale: "Пересекать сплошную линию разметки 1.1 для обгона категорически запрещено без каких-либо исключений." }
+                ]
+            },
+            {
+                id: 9,
+                topic: "Скоростной режим",
+                question: "Какая максимальная скорость движения разрешена в жилой зоне и на дворовых территориях?",
+                svg: `
+                <svg viewBox="0 0 400 280" class="svg-canvas">
+                    <rect width="400" height="280" fill="#0f172a"/>
+                    
+                    <!-- Sign 5.21 -->
+                    <g transform="translate(140, 50)">
+                        <rect x="0" y="0" width="120" height="170" rx="8" fill="#2563eb" stroke="#ffffff" stroke-width="3"/>
+                        <text x="60" y="40" fill="#fff" font-size="32" text-anchor="middle">🏡</text>
+                        <text x="60" y="85" fill="#fff" font-size="28" text-anchor="middle">🚗</text>
+                        <text x="60" y="130" fill="#fff" font-size="28" text-anchor="middle">🚶</text>
+                    </g>
+                </svg>`,
+                options: [
+                    { text: "10 км/ч", isCorrect: false, rationale: "Слишком заниженная лимитированная скорость." },
+                    { text: "20 км/ч", isCorrect: true, rationale: "В жилых зонах (знак 5.21) и дворовых территориях максимальная скорость движения — 20 км/ч." },
+                    { text: "60 км/ч", isCorrect: false, rationale: "60 км/ч — стандартный лимит для обычных дорог в городе." }
+                ]
+            },
+            {
+                id: 10,
+                topic: "Пешеходный переход",
+                question: "Разрешен ли обгон на нерегулируемом пешеходном переходе, если на нем НЕТ пешеходов?",
+                svg: `
+                <svg viewBox="0 0 400 280" class="svg-canvas">
+                    <rect width="400" height="280" fill="#0f172a"/>
+                    <rect x="0" y="60" width="400" height="160" fill="#334155"/>
+                    
+                    <!-- Zebra -->
+                    <g transform="translate(200, 60)">
+                        <rect x="0" y="0" width="30" height="160" fill="#334155"/>
+                        <rect x="5" y="10" width="20" height="25" fill="#fff"/>
+                        <rect x="5" y="45" width="20" height="25" fill="#fff"/>
+                        <rect x="5" y="80" width="20" height="25" fill="#fff"/>
+                        <rect x="5" y="115" width="20" height="25" fill="#fff"/>
+                    </g>
+
+                    <!-- Overtaking car -->
+                    <g transform="translate(180, 80)">
+                        <rect x="0" y="0" width="45" height="30" rx="5" fill="#2563eb"/>
+                        <text x="22" y="19" fill="#ffffff" font-size="10" font-weight="bold" text-anchor="middle">ВЫ</text>
+                    </g>
+                </svg>`,
+                options: [
+                    { text: "Разрешен, если нет пешеходов", isCorrect: false, rationale: "Раньше это допускалось, но по действующим ПДД обгон на переходе запрещен всегда." },
+                    { text: "Запрещен в любом случае", isCorrect: true, rationale: "Обгон на пешеходном переходе запрещен ВСЕГДА, независимо от наличия на нем пешеходов." }
+                ]
+            }
+        ];
+
+        let currentIdx = 0;
+        let score = 0;
+        let answered = false;
+
+        function loadQuestion() {
+            answered = false;
+            const q = questions[currentIdx];
+
+            document.getElementById('question-tracker').innerText = `Вопрос ${currentIdx + 1} из ${questions.length}`;
+            document.getElementById('progress-percent').innerText = `${Math.round(((currentIdx + 1) / questions.length) * 100)}%`;
+            document.getElementById('progress-bar').style.width = `${((currentIdx + 1) / questions.length) * 100}%`;
+            
+            document.getElementById('topic-tag').innerText = q.topic;
+            document.getElementById('question-text').innerText = q.question;
+            document.getElementById('svg-container').innerHTML = q.svg;
+
+            const optsContainer = document.getElementById('options-container');
+            optsContainer.innerHTML = '';
+
+            document.getElementById('explanation-box').classList.add('hidden');
+            document.getElementById('next-btn').classList.add('hidden');
+
+            q.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = "w-full text-left p-4 rounded-xl bg-slate-700/60 hover:bg-slate-700 border border-slate-600 transition flex items-center justify-between group";
+                btn.onclick = () => selectOption(idx);
+                btn.innerHTML = `
+                    <span class="text-sm md:text-base font-medium text-slate-200 group-hover:text-white">${opt.text}</span>
+                    <span class="w-5 h-5 rounded-full border border-slate-500 flex items-center justify-center text-xs shrink-0 ml-3"></span>
+                `;
+                optsContainer.appendChild(btn);
+            });
+        }
+
+        function selectOption(optIdx) {
+            if (answered) return;
+            answered = true;
+
+            const q = questions[currentIdx];
+            const selectedOpt = q.options[optIdx];
+            const buttons = document.getElementById('options-container').children;
+
+            if (selectedOpt.isCorrect) {
+                score++;
+                document.getElementById('current-score').innerText = score;
+                buttons[optIdx].className = "w-full text-left p-4 rounded-xl bg-emerald-500/20 border-2 border-emerald-500 text-emerald-200 font-medium flex items-center justify-between";
+                showExplanation(true, "Правильно! 🎉", selectedOpt.rationale);
+            } else {
+                buttons[optIdx].className = "w-full text-left p-4 rounded-xl bg-rose-500/20 border-2 border-rose-500 text-rose-200 font-medium flex items-center justify-between";
+                
+                // Highlight correct answer
+                q.options.forEach((o, i) => {
+                    if (o.isCorrect) {
+                        buttons[i].className = "w-full text-left p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/50 text-emerald-300 font-medium flex items-center justify-between";
+                    }
+                });
+
+                showExplanation(false, "Ошибка! ❌", selectedOpt.rationale);
+            }
+
+            document.getElementById('next-btn').classList.remove('hidden');
+        }
+
+        function showExplanation(isCorrect, title, rationale) {
+            const expBox = document.getElementById('explanation-box');
+            const expTitle = document.getElementById('explanation-title');
+            const expText = document.getElementById('explanation-text');
+
+            expBox.classList.remove('hidden', 'bg-emerald-500/10', 'border-emerald-500/30', 'bg-rose-500/10', 'border-rose-500/30');
+
+            if (isCorrect) {
+                expBox.classList.add('bg-emerald-500/10', 'border-emerald-500/30');
+                expTitle.className = "font-bold text-sm mb-1 text-emerald-400";
+            } else {
+                expBox.classList.add('bg-rose-500/10', 'border-rose-500/30');
+                expTitle.className = "font-bold text-sm mb-1 text-rose-400";
+            }
+
+            expTitle.innerText = title;
+            expText.innerText = rationale;
+        }
+
+        function nextQuestion() {
+            currentIdx++;
+            if (currentIdx < questions.length) {
+                loadQuestion();
+            } else {
+                showEndCard();
+            }
+        }
+
+        function showEndCard() {
+            document.getElementById('quiz-card').classList.add('hidden');
+            document.getElementById('end-card').classList.remove('hidden');
+            document.getElementById('final-score').innerText = score;
+
+            const msg = document.getElementById('feedback-message');
+            if (score === 10) {
+                msg.innerText = "Идеальный результат! Вы отлично знаете теорию ПДД и готовы к сдаче экзамена в ГИБДД.";
+            } else if (score >= 8) {
+                msg.innerText = "Хороший результат! Вы допустили лишь незначительные ошибки. Повторите заваленные темы.";
+            } else {
+                msg.innerText = "Рекомендуем еще раз внимательно прорешать билеты и изучить разборы правил.";
+            }
+        }
+
+        function restartQuiz() {
+            currentIdx = 0;
+            score = 0;
+            document.getElementById('current-score').innerText = 0;
+            document.getElementById('end-card').classList.add('hidden');
+            document.getElementById('quiz-card').classList.remove('hidden');
+            loadQuestion();
+        }
+
+        // Initialize quiz
+        loadQuestion();
+    </script>
+</body>
+</html>
